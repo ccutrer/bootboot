@@ -7,7 +7,7 @@ module DefinitionPatch
     lockfile = if ENV['BOOTBOOT_UPDATING_ALTERNATE_LOCKFILE']
       wrong_lock
     else
-      Bootboot::GEMFILE_NEXT_LOCK
+      Bootboot.current_lockfile
     end
 
     super(lockfile, *args)
@@ -21,7 +21,7 @@ module RubyVersionPatch
       # the Gemfile is different from the Ruby version currently running, we
       # want to write the version specified in `Gemfile` for the current
       # dependency set to the lock file
-      Bundler::Definition.build(Bootboot::GEMFILE, nil, false).ruby_version || super
+      Bundler::Definition.build(Bundler.default_gemfile, nil, false).ruby_version || super
     else
       super
     end
@@ -40,8 +40,9 @@ module DefinitionSourceRequirementsPatch
 end
 
 module SharedHelpersPatch
-  def default_lockfile
-    Bootboot::GEMFILE_NEXT_LOCK
+  def default_lockfile(call_original: false)
+    return super() if call_original
+    Bootboot.current_lockfile
   end
 end
 
@@ -49,7 +50,12 @@ Bundler::Definition.prepend(DefinitionSourceRequirementsPatch)
 Bundler::RubyVersion.singleton_class.prepend(RubyVersionPatch)
 
 Bundler::Dsl.class_eval do
-  def enable_dual_booting
+  def enable_dual_booting(lockfile = nil)
+    if ENV['BOOTBOOT_LOCKFILE']
+      Bootboot.current_lockfile = Pathname(ENV['BOOTBOOT_LOCKFILE'])
+    else
+      Bootboot.current_lockfile = lockfile || Bootboot.lockfiles.last
+    end
     Bundler::Definition.prepend(DefinitionPatch)
     Bundler::SharedHelpers.singleton_class.prepend(SharedHelpersPatch)
   end

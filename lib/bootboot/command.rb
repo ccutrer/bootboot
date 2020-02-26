@@ -9,9 +9,9 @@ module Bootboot
     end
 
     def exec(_cmd, _args)
-      FileUtils.cp(GEMFILE_LOCK, GEMFILE_NEXT_LOCK)
+      FileUtils.cp(Bootboot.default_lockfile, Bootboot.current_lockfile)
 
-      File.open(GEMFILE, 'a+') do |f|
+      File.open(Bundler.default_gemfile, 'a+') do |f|
         f.write(<<-EOM)
 Plugin.send(:load_plugin, 'bootboot') if Plugin.installed?('bootboot')
 

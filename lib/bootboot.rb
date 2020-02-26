@@ -4,20 +4,32 @@ require "bootboot/version"
 require "bootboot/bundler_patch"
 
 module Bootboot
-  GEMFILE = Bundler.default_gemfile
-  GEMFILE_LOCK = Pathname("#{GEMFILE}.lock")
-  GEMFILE_NEXT_LOCK = Pathname("#{GEMFILE}_next.lock")
-
   autoload :GemfileNextAutoSync, 'bootboot/gemfile_next_auto_sync'
   autoload :Command,             'bootboot/command'
 
   class << self
+    attr_accessor :current_lockfile
+
     def env_next
       env_prefix + '_NEXT'
     end
 
-    def env_previous
-      env_prefix + '_PREVIOUS'
+    def lockfiles
+      add_lockfile("#{Bundler.default_gemfile}_next.lock") unless @lockfiles
+      @lockfiles
+    end
+
+    def add_lockfile(lockfile)
+      @lockfiles ||= [default_lockfile]
+      @lockfiles << lockfile unless @lockfiles.include?(lockfile)
+    end
+
+    def default_lockfile
+      if defined?(SharedHelpersPatch) && Bundler::SharedHelpers.singleton_class < SharedHelpersPatch
+        Bundler::SharedHelpers.default_lockfile(call_original: true)
+      else
+        Bundler.default_lockfile
+      end
     end
 
     private
